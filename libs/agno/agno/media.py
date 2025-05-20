@@ -307,7 +307,11 @@ class Image(BaseModel):
         return {k: v for k, v in response_dict.items() if v is not None}
 
     @classmethod
-    def from_artifact(cls, artifact: ImageArtifact) -> "Image":
+    def from_artifact(cls, artifact: Union[ImageArtifact, Dict[str, Any]]) -> "Image":
+        if isinstance(artifact, dict):
+            # Handle dictionary input
+            return cls(url=artifact.get("url"))
+        # Handle ImageArtifact object
         return cls(url=artifact.url)
 
 
