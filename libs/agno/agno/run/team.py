@@ -158,16 +158,23 @@ class TeamRunResponse:
             return json.dumps(self.content, **kwargs)
 
     def add_member_run(self, run_response: Union["TeamRunResponse", RunResponse]) -> None:
-        self.member_responses.append(run_response)
-        if run_response.images is not None:
+        """Add a member run to the team response while preserving tool calls."""
+        if isinstance(run_response, TeamRunResponse):
+            run_response_copy = TeamRunResponse.from_dict(run_response.to_dict())
+        else:
+            run_response_copy = RunResponse.from_dict(run_response.to_dict())
+
+        self.member_responses.append(run_response_copy)
+
+        if run_response_copy.images is not None:
             if self.images is None:
                 self.images = []
-            self.images.extend(run_response.images)
-        if run_response.videos is not None:
+            self.images.extend(run_response_copy.images)
+        if run_response_copy.videos is not None:
             if self.videos is None:
                 self.videos = []
-            self.videos.extend(run_response.videos)
-        if run_response.audio is not None:
+            self.videos.extend(run_response_copy.videos)
+        if run_response_copy.audio is not None:
             if self.audio is None:
                 self.audio = []
-            self.audio.extend(run_response.audio)
+            self.audio.extend(run_response_copy.audio)
