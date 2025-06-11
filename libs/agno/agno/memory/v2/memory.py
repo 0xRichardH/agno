@@ -1038,7 +1038,7 @@ class Memory:
                 response_dict = interaction.response.to_dict()
                 response_content = (
                     response_dict.get("content")
-                    or ",".join([tool.get("content", "") for tool in response_dict.get("tools", [])])
+                    or ",".join([tool.get("result", "") for tool in response_dict.get("tools", [])])
                     or ""
                 )
                 team_member_interactions_str += f"Member: {interaction.member_name}\n"

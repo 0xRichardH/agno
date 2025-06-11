@@ -5465,7 +5465,7 @@ class Team:
                         if len(response.content.strip()) > 0:
                             return f"Agent {member_name}: {response.content}"
                         elif response.tools is not None and len(response.tools) > 0:
-                            return f"Agent {member_name}: {','.join([tool.get('content') for tool in response.tools])}"
+                            return f"Agent {member_name}: {','.join([tool.result for tool in response.tools if tool.result])}"
                     elif issubclass(type(response.content), BaseModel):
                         try:
                             return f"Agent {member_name}: {response.content.model_dump_json(indent=2)}"  # type: ignore

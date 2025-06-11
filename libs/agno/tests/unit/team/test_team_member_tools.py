@@ -1,6 +1,6 @@
-from agno.run.response import RunResponse, RunEvent
-from agno.run.team import TeamRunResponse
 from agno.models.response import ToolExecution
+from agno.run.response import RunEvent, RunResponse
+from agno.run.team import TeamRunResponse
 
 
 def test_team_run_response_includes_member_tools():
