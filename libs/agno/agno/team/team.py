@@ -2233,12 +2233,8 @@ class Team:
 
             # Handle reasoning
             reasoning_steps = []
-            if (
-                isinstance(run_response, TeamRunResponse)
-                and run_response.extra_data is not None
-                and run_response.extra_data.reasoning_steps is not None
-            ):
-                reasoning_steps = run_response.extra_data.reasoning_steps
+            if isinstance(run_response, TeamRunResponse):
+                reasoning_steps = self._extract_reasoning_steps(run_response.extra_data)
 
             if len(reasoning_steps) > 0 and show_reasoning:
                 # Create panels for reasoning steps
@@ -2263,12 +2259,10 @@ class Team:
                     for member_response in run_response.member_responses:
                         # Handle member reasoning
                         reasoning_steps = []
-                        if (
-                            isinstance(member_response, RunResponse)
-                            and member_response.extra_data is not None
-                            and member_response.extra_data.reasoning_steps is not None
-                        ):
-                            reasoning_steps.extend(member_response.extra_data.reasoning_steps)
+                        if isinstance(member_response, RunResponse):
+                            reasoning_steps.extend(
+                                self._extract_reasoning_steps(member_response.extra_data)
+                            )
 
                         if len(reasoning_steps) > 0 and show_reasoning:
                             # Create panels for reasoning steps
@@ -2532,8 +2526,8 @@ class Team:
                             _response_content += resp.content
                         if resp.thinking is not None:
                             _response_thinking += resp.thinking
-                    if resp.extra_data is not None and resp.extra_data.reasoning_steps is not None:
-                        reasoning_steps = resp.extra_data.reasoning_steps
+                    if resp.extra_data is not None:
+                        reasoning_steps = self._extract_reasoning_steps(resp.extra_data)
 
                     # Collect team tool calls, avoiding duplicates
                     if self.show_tool_calls and resp.tools:
@@ -2821,11 +2815,8 @@ class Team:
 
                     # Add reasoning steps if any
                     reasoning_steps = []
-                    if (
-                        member_response.extra_data is not None
-                        and member_response.extra_data.reasoning_steps is not None
-                    ):
-                        reasoning_steps = member_response.extra_data.reasoning_steps
+                    if member_response.extra_data is not None:
+                        reasoning_steps = self._extract_reasoning_steps(member_response.extra_data)
                     if reasoning_steps and show_reasoning:
                         for j, step in enumerate(reasoning_steps, 1):
                             member_reasoning_panel = self._build_reasoning_step_panel(
@@ -3090,12 +3081,8 @@ class Team:
 
             # Handle reasoning
             reasoning_steps = []
-            if (
-                isinstance(run_response, TeamRunResponse)
-                and run_response.extra_data is not None
-                and run_response.extra_data.reasoning_steps is not None
-            ):
-                reasoning_steps = run_response.extra_data.reasoning_steps
+            if isinstance(run_response, TeamRunResponse):
+                reasoning_steps = self._extract_reasoning_steps(run_response.extra_data)
 
             if len(reasoning_steps) > 0 and show_reasoning:
                 # Create panels for reasoning steps
@@ -3120,12 +3107,10 @@ class Team:
                     for member_response in run_response.member_responses:
                         # Handle member reasoning
                         reasoning_steps = []
-                        if (
-                            isinstance(member_response, RunResponse)
-                            and member_response.extra_data is not None
-                            and member_response.extra_data.reasoning_steps is not None
-                        ):
-                            reasoning_steps.extend(member_response.extra_data.reasoning_steps)
+                        if isinstance(member_response, RunResponse):
+                            reasoning_steps.extend(
+                                self._extract_reasoning_steps(member_response.extra_data)
+                            )
 
                         if len(reasoning_steps) > 0 and show_reasoning:
                             # Create panels for reasoning steps
@@ -3384,8 +3369,8 @@ class Team:
                             _response_content += resp.content
                         if resp.thinking is not None:
                             _response_thinking += resp.thinking
-                    if resp.extra_data is not None and resp.extra_data.reasoning_steps is not None:
-                        reasoning_steps = resp.extra_data.reasoning_steps
+                    if resp.extra_data is not None:
+                        reasoning_steps = self._extract_reasoning_steps(resp.extra_data)
 
                     # Collect team tool calls, avoiding duplicates
                     if self.show_tool_calls and resp.tools:
@@ -3613,11 +3598,8 @@ class Team:
 
                     # Add reasoning steps if any
                     reasoning_steps = []
-                    if (
-                        member_response.extra_data is not None
-                        and member_response.extra_data.reasoning_steps is not None
-                    ):
-                        reasoning_steps = member_response.extra_data.reasoning_steps
+                    if member_response.extra_data is not None:
+                        reasoning_steps = self._extract_reasoning_steps(member_response.extra_data)
                     if reasoning_steps and show_reasoning:
                         for j, step in enumerate(reasoning_steps, 1):
                             member_reasoning_panel = self._build_reasoning_step_panel(
@@ -3755,6 +3737,33 @@ class Team:
                 if member.team_id == entity_id:
                     return member.name or entity_id
         return entity_id
+
+    def _extract_reasoning_steps(self, extra_data: Any) -> List[ReasoningStep]:
+        """Safely extract reasoning steps from extra_data which may be a
+        RunResponseExtraData object or a plain dictionary."""
+        if extra_data is None:
+            return []
+
+        steps = None
+        if isinstance(extra_data, dict):
+            steps = extra_data.get("reasoning_steps")
+        else:
+            steps = getattr(extra_data, "reasoning_steps", None)
+
+        if not steps:
+            return []
+
+        normalized_steps: List[ReasoningStep] = []
+        for step in steps:
+            if isinstance(step, ReasoningStep):
+                normalized_steps.append(step)
+            else:
+                try:
+                    normalized_steps.append(ReasoningStep.model_validate(step))
+                except Exception:
+                    continue
+
+        return normalized_steps
 
     def _parse_response_content(
         self,
@@ -6719,10 +6728,12 @@ class Team:
             run_response.reasoning_content += content  # type: ignore
 
     def _add_reasoning_step_to_extra_data(self, run_response: TeamRunResponse, reasoning_step: ReasoningStep) -> None:
-        if run_response.extra_data is None:
-            from agno.run.response import RunResponseExtraData
+        from agno.run.response import RunResponseExtraData
 
+        if run_response.extra_data is None:
             run_response.extra_data = RunResponseExtraData()
+        elif isinstance(run_response.extra_data, dict):
+            run_response.extra_data = RunResponseExtraData.from_dict(run_response.extra_data)
 
         if run_response.extra_data.reasoning_steps is None:
             run_response.extra_data.reasoning_steps = []
@@ -6731,10 +6742,12 @@ class Team:
 
     def _add_reasoning_metrics_to_extra_data(self, run_response: TeamRunResponse, reasoning_time_taken: float) -> None:
         try:
-            if run_response.extra_data is None:
-                from agno.run.response import RunResponseExtraData
+            from agno.run.response import RunResponseExtraData
 
+            if run_response.extra_data is None:
                 run_response.extra_data = RunResponseExtraData()
+            elif isinstance(run_response.extra_data, dict):
+                run_response.extra_data = RunResponseExtraData.from_dict(run_response.extra_data)
 
             # Initialize reasoning_messages if it doesn't exist
             if run_response.extra_data.reasoning_messages is None:
